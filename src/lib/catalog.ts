@@ -39,6 +39,7 @@ export const DEFAULT_SEARCH = {
 }
 
 export function formatClp(value: number) {
+  if (!Number.isFinite(value)) return '—'
   return new Intl.NumberFormat('es-CL', {
     style: 'currency',
     currency: 'CLP',
@@ -46,7 +47,8 @@ export function formatClp(value: number) {
   }).format(value)
 }
 
-export function inferBrand(title: string) {
-  const lower = title.toLowerCase()
+export function inferBrand(title: string | null | undefined) {
+  const lower = (title || '').toLowerCase()
+  if (!lower) return null
   return BRANDS.find((brand) => lower.includes(brand.toLowerCase())) ?? null
 }

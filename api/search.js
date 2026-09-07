@@ -99,36 +99,44 @@ async function highlightEntries(token, categoryId) {
   }
 }
 
-async function itemIdFromProduct(token, productId) {
-  try {
-    const product = await mlGet(`/products/${productId}`, token)
-    return (
-      product.buy_box_winner?.item_id ||
-      product.buy_box?.item_id ||
-      product.catalog_product_id ||
-      null
-    )
-  } catch {
-    return null
+function mapCatalogProduct(product) {
+  const winner = product.buy_box_winner || {}
+  const picture = product.pictures?.[0]?.url || product.pictures?.[0]?.secure_url || ''
+  return {
+    id: winner.item_id || product.id,
+    title: product.name || '',
+    price: Number(winner.price),
+    original_price: winner.original_price ?? null,
+    thumbnail: picture,
+    permalink:
+      winner.permalink ||
+      product.permalink ||
+      `https://www.mercadolibre.cl/p/${product.id}`,
+    shipping: { free_shipping: Boolean(winner.shipping?.free_shipping) },
+    official_store_name: null,
+    sold_quantity: product.sold_quantity ?? null,
   }
 }
 
-async function collectItemIds(token, categoryId) {
+async function fetchCatalogProducts(token, productIds) {
+  const unique = [...new Set(productIds)].slice(0, 20)
+  const products = await Promise.all(
+    unique.map((id) => mlGet(`/products/${id}`, token).catch(() => null)),
+  )
+  return products
+    .filter(Boolean)
+    .map(mapCatalogProduct)
+    .filter((item) => item.title && Number.isFinite(item.price) && item.price > 0)
+}
+
+async function collectHighlights(token, categoryId) {
   const ids = await categoryIds(token, categoryId)
   const groups = await Promise.all(ids.map((id) => highlightEntries(token, id)))
   const entries = groups.flat()
-
-  const direct = entries.filter((row) => row.type === 'ITEM' && row.id).map((row) => row.id)
-  const productIds = entries
-    .filter((row) => row.type === 'PRODUCT' && row.id)
-    .map((row) => row.id)
-    .slice(0, 20)
-
-  const fromProducts = (
-    await Promise.all(productIds.map((id) => itemIdFromProduct(token, id)))
-  ).filter(Boolean)
-
-  return [...direct, ...fromProducts]
+  return {
+    itemIds: entries.filter((row) => row.type === 'ITEM' && row.id).map((row) => row.id),
+    productIds: entries.filter((row) => row.type === 'PRODUCT' && row.id).map((row) => row.id),
+  }
 }
 
 async function fetchLive(searchParams) {
@@ -138,12 +146,16 @@ async function fetchLive(searchParams) {
   }
 
   const root = searchParams.get('category') || DEFAULT_CATEGORY
-  const itemIds = await collectItemIds(token, root)
-  const items = await fetchItems(token, itemIds)
-  if (!items.length) {
+  const { itemIds, productIds } = await collectHighlights(token, root)
+  const [items, catalog] = await Promise.all([
+    fetchItems(token, itemIds),
+    fetchCatalogProducts(token, productIds),
+  ])
+  const all = [...catalog, ...items]
+  if (!all.length) {
     throw Object.assign(new Error('Sin resultados en highlights de Mercado Libre'), { status: 404 })
   }
-  return applyFilters(items, searchParams)
+  return applyFilters(all, searchParams)
 }
 
 async function fetchItems(token, ids) {
@@ -161,7 +173,7 @@ async function fetchItems(token, ids) {
 
   return pages.flat().flatMap((row) => {
     const item = row.body || row
-    if (!item?.id || item.status === 'closed') return []
+    if (!item?.id || !item.title || !item.price || item.status === 'closed') return []
     return [item]
   })
 }

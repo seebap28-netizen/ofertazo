@@ -28,14 +28,14 @@ function mapItem(item: MlItem): Product {
 
   return {
     id: item.id,
-    title: item.title,
-    price: item.price,
+    title: item.title || 'Producto',
+    price: Number(item.price) || 0,
     originalPrice: original,
     discountPercent: discount,
     thumbnail: (item.thumbnail || '')
       .replace('http://', 'https://')
       .replace('-I.jpg', '-O.jpg'),
-    permalink: item.permalink,
+    permalink: item.permalink || `https://www.mercadolibre.cl/${item.id}`,
     freeShipping: Boolean(item.shipping?.free_shipping),
     officialStore: item.official_store_name || null,
     soldQuantity: item.sold_quantity ?? null,
@@ -75,7 +75,9 @@ export async function searchProducts(params: SearchParams): Promise<SearchRespon
   }
 
   const data = (await response.json()) as MlSearch
-  let results = (data.results || []).map(mapItem)
+  let results = (data.results || [])
+    .map(mapItem)
+    .filter((item) => item.title && item.price && item.permalink)
 
   if (params.dealsOnly) {
     results = results.filter((item) => item.discountPercent && item.discountPercent > 0)
