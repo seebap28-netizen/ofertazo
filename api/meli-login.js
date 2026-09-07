@@ -14,6 +14,7 @@ export default async function handler(req, res) {
   url.searchParams.set('redirect_uri', redirectUri())
   url.searchParams.set('code_challenge', challenge)
   url.searchParams.set('code_challenge_method', 'S256')
+  url.searchParams.set('scope', 'offline_access read')
 
   res.setHeader('Set-Cookie', [
     `ml_pkce=${encodeURIComponent(verifier)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,

@@ -10,9 +10,10 @@ export default async function handler(req, res) {
 
   const verifier = readCookie(req, 'ml_pkce')
   const data = await exchangeCode(code, verifier)
-  const token = data.refresh_token || ''
+  const refresh = data.refresh_token || ''
   const access = data.access_token || ''
   const error = data.message || data.error || ''
+  const ok = Boolean(access)
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8')
   res.status(200).send(`<!doctype html>
@@ -20,11 +21,15 @@ export default async function handler(req, res) {
   <body style="font-family:sans-serif;max-width:720px;margin:40px auto;line-height:1.5">
     <h1>Conexión con Mercado Libre</h1>
     ${
-      token
-        ? `<p>Copia estos valores en Vercel → Settings → Environment Variables y vuelve a hacer Deploy:</p>
-           <p><b>ML_REFRESH_TOKEN</b></p>
-           <textarea style="width:100%;height:90px">${token}</textarea>
-           <p><b>ML_ACCESS_TOKEN</b> (opcional, se renueva solo con el refresh)</p>
+      ok
+        ? `<p>Copia estos valores en Vercel → Settings → Environment Variables y vuelve a hacer Deploy.</p>
+           ${
+             refresh
+               ? `<p><b>ML_REFRESH_TOKEN</b></p>
+           <textarea style="width:100%;height:90px">${refresh}</textarea>`
+               : `<p>Esta vez no vino refresh token. Con <b>ML_ACCESS_TOKEN</b> las ofertas funcionan unas 6 horas.</p>`
+           }
+           <p><b>ML_ACCESS_TOKEN</b></p>
            <textarea style="width:100%;height:90px">${access}</textarea>
            <p>Después de guardarlas, Redeploy. Las ofertas y fotos pasan a ser las de Mercado Libre Chile.</p>`
         : `<p>No se pudo obtener el token.</p><pre>${error || JSON.stringify(data, null, 2)}</pre>
