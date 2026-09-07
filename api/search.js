@@ -1,4 +1,5 @@
 import { seedProducts } from './seed.js'
+import { getAccessToken } from './meliToken.js'
 
 const SITE = 'MLC'
 const DEFAULT_CATEGORY = 'MLC1276'
@@ -10,14 +11,19 @@ function mapItem(item) {
       ? Math.round((1 - item.price / original) * 100)
       : null
 
+  const thumbnailId = item.thumbnail_id
+  const thumbnail = thumbnailId
+    ? `https://http2.mlstatic.com/D_${thumbnailId}-O.jpg`
+    : String(item.thumbnail || '')
+        .replace('http://', 'https://')
+        .replace('-I.jpg', '-O.jpg')
+
   return {
     id: item.id,
     title: item.title,
     price: item.price,
     original_price: original,
-    thumbnail: String(item.thumbnail || '')
-      .replace('http://', 'https://')
-      .replace('-I.jpg', '-O.jpg'),
+    thumbnail,
     permalink: item.permalink,
     shipping: item.shipping,
     official_store_name: item.official_store_name || null,
@@ -65,7 +71,7 @@ async function fetchLive(searchParams) {
   const sort = searchParams.get('sort') || 'relevance'
   const price = searchParams.get('price')
   const officialStore = searchParams.get('official_store')
-  const token = process.env.ML_ACCESS_TOKEN
+  const token = await getAccessToken()
 
   const url = new URL(`https://api.mercadolibre.com/sites/${SITE}/search`)
   if (q) url.searchParams.set('q', q)
@@ -103,7 +109,8 @@ async function fetchLive(searchParams) {
 export async function runSearch(searchParams) {
   try {
     return await fetchLive(searchParams)
-  } catch {
+  } catch (error) {
+    console.error('Búsqueda Mercado Libre falló', error)
     return filterSeed(searchParams)
   }
 }
@@ -117,7 +124,11 @@ export default async function handler(req, res) {
   try {
     const url = new URL(req.url, 'http://localhost')
     const payload = await runSearch(url.searchParams)
-    res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=300')
+    if (payload.source === 'live') {
+      res.setHeader('Cache-Control', 's-maxage=120, stale-while-revalidate=300')
+    } else {
+      res.setHeader('Cache-Control', 'no-store')
+    }
     res.status(200).json(payload)
   } catch (error) {
     res.status(error.status || 502).json({
