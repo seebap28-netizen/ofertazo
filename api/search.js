@@ -32,6 +32,27 @@ function mapItem(item) {
   }
 }
 
+function authHeaders(token) {
+  const headers = { Accept: 'application/json' }
+  if (token) headers.Authorization = `Bearer ${token}`
+  return headers
+}
+
+async function mlGet(path, token) {
+  const response = await fetch(`https://api.mercadolibre.com${path}`, {
+    headers: authHeaders(token),
+  })
+  const text = await response.text()
+  if (!response.ok) {
+    const error = Object.assign(
+      new Error(`Mercado Libre ${response.status}: ${text.slice(0, 180)}`),
+      { status: response.status },
+    )
+    throw error
+  }
+  return JSON.parse(text)
+}
+
 function filterSeed(searchParams) {
   const q = (searchParams.get('q') || '').toLowerCase()
   const price = searchParams.get('price')
@@ -63,47 +84,89 @@ function filterSeed(searchParams) {
   }
 }
 
-async function fetchLive(searchParams) {
-  const q = searchParams.get('q') || ''
-  const category = searchParams.get('category') || DEFAULT_CATEGORY
-  const offset = searchParams.get('offset') || '0'
-  const limit = searchParams.get('limit') || '20'
-  const sort = searchParams.get('sort') || 'relevance'
+async function categoryIds(token, rootId) {
+  const category = await mlGet(`/categories/${rootId}`, token)
+  const children = (category.children_categories || []).map((child) => child.id)
+  return [rootId, ...children].slice(0, 8)
+}
+
+async function highlightItemIds(token, categoryId) {
+  try {
+    const data = await mlGet(`/highlights/${SITE}/category/${categoryId}`, token)
+    return (data.content || [])
+      .filter((row) => row.type === 'ITEM' && row.id)
+      .map((row) => row.id)
+  } catch {
+    return []
+  }
+}
+
+async function fetchItems(token, ids) {
+  const unique = [...new Set(ids)].slice(0, 40)
+  if (!unique.length) return []
+
+  const chunks = []
+  for (let i = 0; i < unique.length; i += 20) {
+    chunks.push(unique.slice(i, i + 20))
+  }
+
+  const pages = await Promise.all(
+    chunks.map((chunk) => mlGet(`/items?ids=${chunk.join(',')}`, token)),
+  )
+
+  return pages.flat().flatMap((row) => {
+    const item = row.body || row
+    if (!item?.id || item.status === 'closed') return []
+    return [item]
+  })
+}
+
+function applyFilters(items, searchParams) {
+  const q = (searchParams.get('q') || '').toLowerCase()
   const price = searchParams.get('price')
   const officialStore = searchParams.get('official_store')
-  const token = await getAccessToken()
+  const sort = searchParams.get('sort') || 'relevance'
+  const offset = Number(searchParams.get('offset') || 0)
+  const limit = Number(searchParams.get('limit') || 20)
 
-  const url = new URL(`https://api.mercadolibre.com/sites/${SITE}/search`)
-  if (q) url.searchParams.set('q', q)
-  url.searchParams.set('category', category)
-  url.searchParams.set('offset', offset)
-  url.searchParams.set('limit', limit)
-  url.searchParams.set('sort', sort)
-  if (price) url.searchParams.set('price', price)
-  if (officialStore) url.searchParams.set('official_store', officialStore)
+  let [min, max] = (price || '-').split('-')
+  min = min ? Number(min) : null
+  max = max ? Number(max) : null
 
-  const headers = {
-    Accept: 'application/json',
-    'User-Agent': 'Ofertazo/1.0 (affiliate catalog; Chile)',
-  }
-  if (token) headers.Authorization = `Bearer ${token}`
+  let filtered = items.filter((item) => {
+    const haystack = `${item.title || ''} ${item.official_store_name || ''}`.toLowerCase()
+    const matchesQuery = !q || q.split(/\s+/).every((part) => haystack.includes(part))
+    const matchesMin = min == null || Number.isNaN(min) || item.price >= min
+    const matchesMax = max == null || Number.isNaN(max) || item.price <= max
+    const matchesOfficial = !officialStore || Boolean(item.official_store_id || item.official_store_name)
+    return matchesQuery && matchesMin && matchesMax && matchesOfficial
+  })
 
-  const response = await fetch(url, { headers })
-  if (!response.ok) {
-    const text = await response.text()
-    const error = Object.assign(
-      new Error(`Mercado Libre ${response.status}: ${text.slice(0, 180)}`),
-      { status: response.status },
-    )
-    throw error
-  }
+  if (sort === 'price_asc') filtered = [...filtered].sort((a, b) => a.price - b.price)
+  if (sort === 'price_desc') filtered = [...filtered].sort((a, b) => b.price - a.price)
 
-  const data = await response.json()
   return {
     source: 'live',
-    paging: data.paging,
-    results: (data.results || []).map(mapItem),
+    paging: { total: filtered.length, offset, limit },
+    results: filtered.slice(offset, offset + limit).map(mapItem),
   }
+}
+
+async function fetchLive(searchParams) {
+  const token = await getAccessToken()
+  if (!token) {
+    throw Object.assign(new Error('sin_token'), { status: 401 })
+  }
+
+  const root = searchParams.get('category') || DEFAULT_CATEGORY
+  const ids = await categoryIds(token, root)
+  const groups = await Promise.all(ids.map((id) => highlightItemIds(token, id)))
+  const itemIds = groups.flat()
+  const items = await fetchItems(token, itemIds)
+  if (!items.length) {
+    throw Object.assign(new Error('Sin resultados en highlights de Mercado Libre'), { status: 404 })
+  }
+  return applyFilters(items, searchParams)
 }
 
 export async function runSearch(searchParams) {
