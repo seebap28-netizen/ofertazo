@@ -90,15 +90,60 @@ async function categoryIds(token, rootId) {
   return [rootId, ...children].slice(0, 8)
 }
 
-async function highlightItemIds(token, categoryId) {
+async function highlightEntries(token, categoryId) {
   try {
     const data = await mlGet(`/highlights/${SITE}/category/${categoryId}`, token)
-    return (data.content || [])
-      .filter((row) => row.type === 'ITEM' && row.id)
-      .map((row) => row.id)
+    return data.content || []
   } catch {
     return []
   }
+}
+
+async function itemIdFromProduct(token, productId) {
+  try {
+    const product = await mlGet(`/products/${productId}`, token)
+    return (
+      product.buy_box_winner?.item_id ||
+      product.buy_box?.item_id ||
+      product.catalog_product_id ||
+      null
+    )
+  } catch {
+    return null
+  }
+}
+
+async function collectItemIds(token, categoryId) {
+  const ids = await categoryIds(token, categoryId)
+  const groups = await Promise.all(ids.map((id) => highlightEntries(token, id)))
+  const entries = groups.flat()
+
+  const direct = entries.filter((row) => row.type === 'ITEM' && row.id).map((row) => row.id)
+  const productIds = entries
+    .filter((row) => row.type === 'PRODUCT' && row.id)
+    .map((row) => row.id)
+    .slice(0, 20)
+
+  const fromProducts = (
+    await Promise.all(productIds.map((id) => itemIdFromProduct(token, id)))
+  ).filter(Boolean)
+
+  return [...direct, ...fromProducts]
+}
+
+async function fetchLive(searchParams) {
+  const token = await getAccessToken()
+  if (!token) {
+    throw Object.assign(new Error('sin_token'), { status: 401 })
+  }
+
+  const root = searchParams.get('category') || DEFAULT_CATEGORY
+  const itemIds = await collectItemIds(token, root)
+  const items = await fetchItems(token, itemIds)
+  if (!items.length) {
+    throw Object.assign(new Error('Sin resultados en highlights de Mercado Libre'), { status: 404 })
+  }
+  return applyFilters(items, searchParams)
 }
 
 async function fetchItems(token, ids) {
@@ -150,23 +195,6 @@ function applyFilters(items, searchParams) {
     paging: { total: filtered.length, offset, limit },
     results: filtered.slice(offset, offset + limit).map(mapItem),
   }
-}
-
-async function fetchLive(searchParams) {
-  const token = await getAccessToken()
-  if (!token) {
-    throw Object.assign(new Error('sin_token'), { status: 401 })
-  }
-
-  const root = searchParams.get('category') || DEFAULT_CATEGORY
-  const ids = await categoryIds(token, root)
-  const groups = await Promise.all(ids.map((id) => highlightItemIds(token, id)))
-  const itemIds = groups.flat()
-  const items = await fetchItems(token, itemIds)
-  if (!items.length) {
-    throw Object.assign(new Error('Sin resultados en highlights de Mercado Libre'), { status: 404 })
-  }
-  return applyFilters(items, searchParams)
 }
 
 export async function runSearch(searchParams) {
