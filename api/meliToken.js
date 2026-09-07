@@ -1,3 +1,5 @@
+import { createHash, randomBytes } from 'node:crypto'
+
 let cached = { token: '', expiresAt: 0 }
 
 export function publicBaseUrl() {
@@ -12,7 +14,19 @@ export function redirectUri() {
   return `${publicBaseUrl()}/api/meli-callback`
 }
 
-export async function exchangeCode(code) {
+export function createPkce() {
+  const verifier = randomBytes(32).toString('base64url')
+  const challenge = createHash('sha256').update(verifier).digest('base64url')
+  return { verifier, challenge }
+}
+
+export function readCookie(req, name) {
+  const raw = req.headers.cookie || ''
+  const match = raw.split(';').map((part) => part.trim()).find((part) => part.startsWith(`${name}=`))
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : ''
+}
+
+export async function exchangeCode(code, codeVerifier) {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     client_id: process.env.ML_CLIENT_ID || '',
@@ -20,6 +34,7 @@ export async function exchangeCode(code) {
     code,
     redirect_uri: redirectUri(),
   })
+  if (codeVerifier) body.set('code_verifier', codeVerifier)
 
   const response = await fetch('https://api.mercadolibre.com/oauth/token', {
     method: 'POST',

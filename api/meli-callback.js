@@ -1,14 +1,15 @@
-import { exchangeCode } from './meliToken.js'
+import { exchangeCode, readCookie } from './meliToken.js'
 
 export default async function handler(req, res) {
   const url = new URL(req.url, 'http://localhost')
   const code = url.searchParams.get('code')
   if (!code) {
-    res.status(400).send('Falta el code de Mercado Libre.')
+    res.status(400).send('Falta el code de Mercado Libre. Entra por /api/meli-login, no abras esta URL a mano.')
     return
   }
 
-  const data = await exchangeCode(code)
+  const verifier = readCookie(req, 'ml_pkce')
+  const data = await exchangeCode(code, verifier)
   const token = data.refresh_token || ''
   const access = data.access_token || ''
   const error = data.message || data.error || ''
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
            <textarea style="width:100%;height:90px">${access}</textarea>
            <p>Después de guardarlas, Redeploy. Las ofertas y fotos pasan a ser las de Mercado Libre Chile.</p>`
         : `<p>No se pudo obtener el token.</p><pre>${error || JSON.stringify(data, null, 2)}</pre>
-           <p>Revisa que la Redirect URI de la app sea exactamente la de <code>/api/meli-callback</code> y que ML_CLIENT_ID y ML_CLIENT_SECRET estén en Vercel.</p>`
+           <p>Vuelve a entrar por <a href="/api/meli-login">/api/meli-login</a> (no recargues esta página: el code solo sirve una vez).</p>`
     }
   </body>
 </html>`)
