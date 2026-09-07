@@ -58,7 +58,7 @@ function filterSeed(searchParams) {
   const price = searchParams.get('price')
   const officialStore = searchParams.get('official_store')
   const offset = Number(searchParams.get('offset') || 0)
-  const limit = Number(searchParams.get('limit') || 20)
+  const limit = Number(searchParams.get('limit') || 48)
   const sort = searchParams.get('sort') || 'relevance'
 
   let [min, max] = (price || '-').split('-')
@@ -87,7 +87,7 @@ function filterSeed(searchParams) {
 async function categoryIds(token, rootId) {
   const category = await mlGet(`/categories/${rootId}`, token)
   const children = (category.children_categories || []).map((child) => child.id)
-  return [rootId, ...children].slice(0, 8)
+  return [rootId, ...children].slice(0, 20)
 }
 
 async function highlightEntries(token, categoryId) {
@@ -127,30 +127,36 @@ function mapCatalogProduct(product, fallbackId) {
 }
 
 async function fetchCatalogProducts(token, productIds) {
-  const unique = [...new Set(productIds)].slice(0, 16)
-  return Promise.all(
-    unique.map(async (id) => {
-      const [product, listing] = await Promise.all([
-        mlGet(`/products/${id}`, token).catch(() => ({ id, name: 'Oferta deportiva' })),
-        mlGet(`/products/${id}/items`, token).catch(() => ({ results: [] })),
-      ])
-      const offers = [...(listing.results || [])].sort(
-        (a, b) => Number(a.price || 0) - Number(b.price || 0),
-      )
-      const cheapest = offers.find((offer) => Number(offer.price) > 0)
-      const mapped = mapCatalogProduct(product, id)
-      if (cheapest) {
-        mapped.price = Number(cheapest.price)
-        mapped.original_price = cheapest.original_price ?? mapped.original_price
-        mapped.id = cheapest.item_id || mapped.id
-        if (cheapest.permalink) mapped.permalink = cheapest.permalink
-        mapped.shipping = {
-          free_shipping: Boolean(cheapest.shipping?.free_shipping || cheapest.free_shipping),
+  const unique = [...new Set(productIds)].slice(0, 60)
+  const mapped = []
+  for (let i = 0; i < unique.length; i += 10) {
+    const chunk = unique.slice(i, i + 10)
+    const batch = await Promise.all(
+      chunk.map(async (id) => {
+        const [product, listing] = await Promise.all([
+          mlGet(`/products/${id}`, token).catch(() => ({ id, name: 'Oferta deportiva' })),
+          mlGet(`/products/${id}/items`, token).catch(() => ({ results: [] })),
+        ])
+        const offers = [...(listing.results || [])].sort(
+          (a, b) => Number(a.price || 0) - Number(b.price || 0),
+        )
+        const cheapest = offers.find((offer) => Number(offer.price) > 0)
+        const row = mapCatalogProduct(product, id)
+        if (cheapest) {
+          row.price = Number(cheapest.price)
+          row.original_price = cheapest.original_price ?? row.original_price
+          row.id = cheapest.item_id || row.id
+          if (cheapest.permalink) row.permalink = cheapest.permalink
+          row.shipping = {
+            free_shipping: Boolean(cheapest.shipping?.free_shipping || cheapest.free_shipping),
+          }
         }
-      }
-      return mapped
-    }),
-  )
+        return row
+      }),
+    )
+    mapped.push(...batch)
+  }
+  return mapped
 }
 
 async function collectHighlights(token, categoryId) {
@@ -179,7 +185,7 @@ async function fetchLive(searchParams) {
   if (!all.length) {
     return {
       source: 'live',
-      paging: { total: 0, offset: 0, limit: 20 },
+      paging: { total: 0, offset: 0, limit: 48 },
       results: [],
     }
   }
@@ -187,7 +193,7 @@ async function fetchLive(searchParams) {
 }
 
 async function fetchItems(token, ids) {
-  const unique = [...new Set(ids)].slice(0, 40)
+  const unique = [...new Set(ids)].slice(0, 80)
   if (!unique.length) return []
 
   const chunks = []
@@ -212,7 +218,7 @@ function applyFilters(items, searchParams) {
   const officialStore = searchParams.get('official_store')
   const sort = searchParams.get('sort') || 'relevance'
   const offset = Number(searchParams.get('offset') || 0)
-  const limit = Number(searchParams.get('limit') || 20)
+  const limit = Number(searchParams.get('limit') || 48)
 
   let [min, max] = (price || '-').split('-')
   min = min ? Number(min) : null
