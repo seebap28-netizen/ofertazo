@@ -77,7 +77,7 @@ export async function searchProducts(params: SearchParams): Promise<SearchRespon
   const data = (await response.json()) as MlSearch
   let results = (data.results || [])
     .map(mapItem)
-    .filter((item) => item.title && item.price && item.permalink)
+    .filter((item) => item.title && item.permalink)
 
   if (params.dealsOnly) {
     results = results.filter((item) => item.discountPercent && item.discountPercent > 0)

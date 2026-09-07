@@ -99,19 +99,27 @@ async function highlightEntries(token, categoryId) {
   }
 }
 
-function mapCatalogProduct(product) {
-  const winner = product.buy_box_winner || {}
-  const picture = product.pictures?.[0]?.url || product.pictures?.[0]?.secure_url || ''
+function mapCatalogProduct(product, fallbackId) {
+  const winner = product.buy_box_winner || product.buy_box || {}
+  const picture =
+    product.pictures?.[0]?.url ||
+    product.pictures?.[0]?.secure_url ||
+    product.secure_thumbnail ||
+    product.thumbnail ||
+    ''
+  const price = Number(
+    winner.price ?? product.price ?? product.original_price ?? product.buy_box_price,
+  )
   return {
-    id: winner.item_id || product.id,
-    title: product.name || '',
-    price: Number(winner.price),
-    original_price: winner.original_price ?? null,
-    thumbnail: picture,
+    id: winner.item_id || product.id || fallbackId,
+    title: product.name || product.title || 'Oferta deportiva',
+    price: Number.isFinite(price) ? price : 0,
+    original_price: winner.original_price ?? product.original_price ?? null,
+    thumbnail: String(picture).replace('http://', 'https://'),
     permalink:
       winner.permalink ||
       product.permalink ||
-      `https://www.mercadolibre.cl/p/${product.id}`,
+      `https://www.mercadolibre.cl/p/${product.id || fallbackId}`,
     shipping: { free_shipping: Boolean(winner.shipping?.free_shipping) },
     official_store_name: null,
     sold_quantity: product.sold_quantity ?? null,
@@ -119,14 +127,17 @@ function mapCatalogProduct(product) {
 }
 
 async function fetchCatalogProducts(token, productIds) {
-  const unique = [...new Set(productIds)].slice(0, 20)
-  const products = await Promise.all(
-    unique.map((id) => mlGet(`/products/${id}`, token).catch(() => null)),
+  const unique = [...new Set(productIds)].slice(0, 24)
+  return Promise.all(
+    unique.map(async (id) => {
+      try {
+        const product = await mlGet(`/products/${id}`, token)
+        return mapCatalogProduct(product, id)
+      } catch {
+        return mapCatalogProduct({ id, name: 'Oferta deportiva' }, id)
+      }
+    }),
   )
-  return products
-    .filter(Boolean)
-    .map(mapCatalogProduct)
-    .filter((item) => item.title && Number.isFinite(item.price) && item.price > 0)
 }
 
 async function collectHighlights(token, categoryId) {
@@ -153,7 +164,11 @@ async function fetchLive(searchParams) {
   ])
   const all = [...catalog, ...items]
   if (!all.length) {
-    throw Object.assign(new Error('Sin resultados en highlights de Mercado Libre'), { status: 404 })
+    return {
+      source: 'live',
+      paging: { total: 0, offset: 0, limit: 20 },
+      results: [],
+    }
   }
   return applyFilters(all, searchParams)
 }
@@ -193,8 +208,8 @@ function applyFilters(items, searchParams) {
   let filtered = items.filter((item) => {
     const haystack = `${item.title || ''} ${item.official_store_name || ''}`.toLowerCase()
     const matchesQuery = !q || q.split(/\s+/).every((part) => haystack.includes(part))
-    const matchesMin = min == null || Number.isNaN(min) || item.price >= min
-    const matchesMax = max == null || Number.isNaN(max) || item.price <= max
+    const matchesMin = min == null || Number.isNaN(min) || !item.price || item.price >= min
+    const matchesMax = max == null || Number.isNaN(max) || !item.price || item.price <= max
     const matchesOfficial = !officialStore || Boolean(item.official_store_id || item.official_store_name)
     return matchesQuery && matchesMin && matchesMax && matchesOfficial
   })

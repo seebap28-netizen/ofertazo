@@ -19,6 +19,8 @@ export default async function handler(req, res) {
         probe('/sites/MLC/search?q=nike&limit=1', token),
         probe('/highlights/MLC/category/MLC1276', token),
         probe('/categories/MLC1276', token),
+        probe('/products/MLC23892420', token),
+        probe('/products/MLC23892420/items', token),
       ])
     : []
 
