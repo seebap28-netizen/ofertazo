@@ -1,34 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Filters } from '../components/Filters'
 import { ProductGrid } from '../components/ProductGrid'
-import { DEFAULT_SEARCH } from '../lib/catalog'
+import { DEFAULT_SEARCH, filterGymProducts } from '../lib/catalog'
 import { searchProducts } from '../lib/ml'
 import type { Product, SearchParams } from '../types'
 
 export function Home() {
   const [filters, setFilters] = useState<SearchParams>(DEFAULT_SEARCH)
-  const [products, setProducts] = useState<Product[]>([])
-  const [total, setTotal] = useState(0)
+  const [catalog, setCatalog] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  async function load(next = filters, append = false) {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await searchProducts(next)
-      setProducts((current) => (append ? [...current, ...data.results] : data.results))
-      setTotal(data.total)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos cargar las ofertas')
-      if (!append) setProducts([])
-    } finally {
-      setLoading(false)
-    }
-  }
+  const products = useMemo(() => filterGymProducts(catalog, filters), [catalog, filters])
 
   useEffect(() => {
-    void load(DEFAULT_SEARCH)
+    async function load() {
+      setLoading(true)
+      setError('')
+      try {
+        const data = await searchProducts(DEFAULT_SEARCH)
+        setCatalog(data.results)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No pudimos cargar las ofertas')
+        setCatalog([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void load()
   }, [])
 
   return (
@@ -45,14 +45,14 @@ export function Home() {
       <Filters
         value={filters}
         onChange={setFilters}
-        onSubmit={() => void load({ ...filters, offset: 0 })}
+        onSubmit={() => setFilters((current) => ({ ...current, offset: 0 }))}
       />
 
       <div className="flex items-end justify-between gap-4">
         <div>
           <h2 className="logo-display text-4xl">🔥 Ofertas gym</h2>
           <p className="text-sm text-zinc-400">
-            {total.toLocaleString('es-CL')} productos para tu entrenamiento
+            {products.length.toLocaleString('es-CL')} productos para tu entrenamiento
           </p>
         </div>
       </div>
@@ -63,28 +63,11 @@ export function Home() {
         </div>
       ) : null}
 
-      {loading && !products.length ? (
+      {loading && !catalog.length ? (
         <p className="text-zinc-400">Cargando ofertas gym...</p>
       ) : (
         <ProductGrid products={products} empty="No encontramos productos con esos filtros." />
       )}
-
-      {products.length > 0 && products.length < total ? (
-        <div className="flex justify-center">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => {
-              const next = { ...filters, offset: products.length }
-              setFilters(next)
-              void load(next, true)
-            }}
-            className="rounded-full border border-white/20 px-6 py-3 text-sm"
-          >
-            {loading ? 'Cargando...' : 'Ver más ofertas'}
-          </button>
-        </div>
-      ) : null}
     </div>
   )
 }
