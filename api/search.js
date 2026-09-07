@@ -58,7 +58,7 @@ function filterSeed(searchParams) {
   const price = searchParams.get('price')
   const officialStore = searchParams.get('official_store')
   const offset = Number(searchParams.get('offset') || 0)
-  const limit = Number(searchParams.get('limit') || 48)
+  const limit = Number(searchParams.get('limit') || 120)
   const sort = searchParams.get('sort') || 'relevance'
 
   let [min, max] = (price || '-').split('-')
@@ -93,11 +93,11 @@ async function categoryIds(token, rootId) {
   )
   const ids = gymKids.map((child) => child.id)
   if (!ids.length) {
-    return [rootId, ...(category.children_categories || []).map((child) => child.id)].slice(0, 20)
+    return [rootId, ...(category.children_categories || []).map((child) => child.id)].slice(0, 30)
   }
 
   const grand = await Promise.all(
-    ids.slice(0, 8).map(async (id) => {
+    ids.slice(0, 12).map(async (id) => {
       try {
         const nested = await mlGet(`/categories/${id}`, token)
         return (nested.children_categories || []).map((child) => child.id)
@@ -107,7 +107,7 @@ async function categoryIds(token, rootId) {
     }),
   )
 
-  return [...ids, ...grand.flat()].slice(0, 20)
+  return [...ids, ...grand.flat()].slice(0, 30)
 }
 
 async function highlightEntries(token, categoryId) {
@@ -147,10 +147,10 @@ function mapCatalogProduct(product, fallbackId) {
 }
 
 async function fetchCatalogProducts(token, productIds) {
-  const unique = [...new Set(productIds)].slice(0, 60)
+  const unique = [...new Set(productIds)].slice(0, 120)
   const mapped = []
-  for (let i = 0; i < unique.length; i += 10) {
-    const chunk = unique.slice(i, i + 10)
+  for (let i = 0; i < unique.length; i += 12) {
+    const chunk = unique.slice(i, i + 12)
     const batch = await Promise.all(
       chunk.map(async (id) => {
         const [product, listing] = await Promise.all([
@@ -205,7 +205,7 @@ async function fetchLive(searchParams) {
   if (!all.length) {
     return {
       source: 'live',
-      paging: { total: 0, offset: 0, limit: 48 },
+      paging: { total: 0, offset: 0, limit: 120 },
       results: [],
     }
   }
@@ -213,7 +213,7 @@ async function fetchLive(searchParams) {
 }
 
 async function fetchItems(token, ids) {
-  const unique = [...new Set(ids)].slice(0, 80)
+  const unique = [...new Set(ids)].slice(0, 120)
   if (!unique.length) return []
 
   const chunks = []
@@ -238,7 +238,7 @@ function applyFilters(items, searchParams) {
   const officialStore = searchParams.get('official_store')
   const sort = searchParams.get('sort') || 'relevance'
   const offset = Number(searchParams.get('offset') || 0)
-  const limit = Number(searchParams.get('limit') || 48)
+  const limit = Number(searchParams.get('limit') || 120)
 
   let [min, max] = (price || '-').split('-')
   min = min ? Number(min) : null

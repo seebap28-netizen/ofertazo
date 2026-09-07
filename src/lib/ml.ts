@@ -58,7 +58,7 @@ export async function searchProducts(params: SearchParams): Promise<SearchRespon
   if (q) search.set('q', q)
   search.set('category', SPORTS_CATEGORY)
   search.set('offset', String(params.offset))
-  search.set('limit', '48')
+  search.set('limit', '120')
   search.set('sort', params.sort)
 
   if (params.minPrice != null || params.maxPrice != null) {
