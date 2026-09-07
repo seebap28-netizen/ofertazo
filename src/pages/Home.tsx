@@ -34,11 +34,11 @@ export function Home() {
   return (
     <div className="space-y-8">
       <section className="rounded-[32px] border border-white/10 bg-gradient-to-br from-[#1a1208] to-black p-6 sm:p-10">
-        <p className="text-sm uppercase tracking-[0.25em] text-[#ffd000]">Chile</p>
-        <h1 className="logo-display mt-2 text-5xl leading-none sm:text-7xl">Ofertas deportivas</h1>
+        <p className="text-sm uppercase tracking-[0.25em] text-[#ffd000]">Gym · Chile</p>
+        <h1 className="logo-display mt-2 text-5xl leading-none sm:text-7xl">Ofertas gym</h1>
         <p className="mt-4 max-w-2xl text-zinc-300">
-          Nike, Adidas, Puma, New Balance, Under Armour y Columbia. Zapatillas, ropa y accesorios con el
-          mejor precio del momento.
+          Creatina, proteína, pre-entreno, pesas y mancuernas. Lo que usas en el gym, al mejor precio
+          del momento.
         </p>
       </section>
 
@@ -50,9 +50,9 @@ export function Home() {
 
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="logo-display text-4xl">🔥 Ofertas deportivas</h2>
+          <h2 className="logo-display text-4xl">🔥 Ofertas gym</h2>
           <p className="text-sm text-zinc-400">
-            {total.toLocaleString('es-CL')} productos disponibles
+            {total.toLocaleString('es-CL')} productos para tu entrenamiento
           </p>
         </div>
       </div>
@@ -64,7 +64,7 @@ export function Home() {
       ) : null}
 
       {loading && !products.length ? (
-        <p className="text-zinc-400">Cargando ofertas...</p>
+        <p className="text-zinc-400">Cargando ofertas gym...</p>
       ) : (
         <ProductGrid products={products} empty="No encontramos productos con esos filtros." />
       )}

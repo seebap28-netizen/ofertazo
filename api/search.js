@@ -84,10 +84,30 @@ function filterSeed(searchParams) {
   }
 }
 
+const GYM_NAME = /fitness|muscul|suplement|pesa|mancuerna|gimnas|cardio|funcional|shaker/i
+
 async function categoryIds(token, rootId) {
   const category = await mlGet(`/categories/${rootId}`, token)
-  const children = (category.children_categories || []).map((child) => child.id)
-  return [rootId, ...children].slice(0, 20)
+  const gymKids = (category.children_categories || []).filter((child) =>
+    GYM_NAME.test(child.name || ''),
+  )
+  const ids = gymKids.map((child) => child.id)
+  if (!ids.length) {
+    return [rootId, ...(category.children_categories || []).map((child) => child.id)].slice(0, 20)
+  }
+
+  const grand = await Promise.all(
+    ids.slice(0, 8).map(async (id) => {
+      try {
+        const nested = await mlGet(`/categories/${id}`, token)
+        return (nested.children_categories || []).map((child) => child.id)
+      } catch {
+        return []
+      }
+    }),
+  )
+
+  return [...ids, ...grand.flat()].slice(0, 20)
 }
 
 async function highlightEntries(token, categoryId) {

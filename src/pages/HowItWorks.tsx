@@ -1,17 +1,17 @@
 export function Help() {
   const steps = [
-    { title: 'Elige tu producto', text: 'Filtra por marca, categoría o precio y encuentra lo que buscas.' },
-    { title: 'Revisa la oferta', text: 'Compara el precio, el descuento y si tiene envío gratis.' },
+    { title: 'Elige tu suplemento o equipo', text: 'Filtra por creatina, proteína, pesas o el precio que te calza.' },
+    { title: 'Revisa la oferta', text: 'Compara el valor, el descuento y si tiene envío gratis.' },
     { title: 'Compra en un clic', text: 'Toca VER OFERTA y termina tu pedido de forma segura.' },
-    { title: 'Recíbelo en casa', text: 'El vendedor despacha a todo Chile. Tú no haces nada más.' },
+    { title: 'Llega a tu casa', text: 'El vendedor despacha a todo Chile. Tú entrenas.' },
   ]
 
   return (
     <div className="space-y-8">
       <h1 className="logo-display text-5xl">Ayuda</h1>
       <p className="max-w-2xl text-zinc-300">
-        Ofertazo reúne ofertas deportivas para que compares y compres más rápido. Precios actualizados,
-        marcas que ya conoces y envíos a todo Chile.
+        Ofertazo junta ofertas de gym en Chile: suplementos, creatina, proteína y pesas. Comparas y
+        compras al toque.
       </p>
 
       <ol className="grid gap-4 sm:grid-cols-2">

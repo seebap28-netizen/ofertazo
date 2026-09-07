@@ -1,29 +1,29 @@
 export const SPORTS_CATEGORY = 'MLC1276'
 
 export const BRANDS = [
-  'Nike',
-  'Adidas',
-  'Puma',
-  'New Balance',
-  'Under Armour',
-  'Columbia',
+  'Ostrovit',
+  'Muscletech',
+  'Optimum',
+  'Foodtech',
+  'Gohard',
+  'Overfit',
 ] as const
 
 export const CATEGORIES = [
-  { id: 'zapatillas', label: 'Zapatillas', query: 'zapatillas' },
-  { id: 'ropa', label: 'Ropa', query: 'ropa deportiva' },
-  { id: 'accesorios', label: 'Accesorios', query: 'accesorios deportivos' },
-  { id: 'futbol', label: 'Fútbol', query: 'fútbol' },
-  { id: 'running', label: 'Running', query: 'running' },
-  { id: 'trekking', label: 'Trekking', query: 'trekking' },
+  { id: 'creatina', label: 'Creatina', query: 'creatina' },
+  { id: 'proteina', label: 'Proteína', query: 'proteína whey' },
+  { id: 'preentreno', label: 'Pre-entreno', query: 'pre entreno' },
+  { id: 'pesas', label: 'Pesas', query: 'pesas' },
+  { id: 'mancuernas', label: 'Mancuernas', query: 'mancuernas' },
+  { id: 'shakers', label: 'Shakers', query: 'shaker' },
 ] as const
 
 export const PRICE_PRESETS = [
   { id: 'all', label: 'Cualquier precio', min: null, max: null },
-  { id: '50', label: 'Hasta $50.000', min: null, max: 50000 },
-  { id: '50-80', label: '$50.000 – $80.000', min: 50000, max: 80000 },
-  { id: '80-120', label: '$80.000 – $120.000', min: 80000, max: 120000 },
-  { id: '120', label: 'Más de $120.000', min: 120000, max: null },
+  { id: '15', label: 'Hasta $15.000', min: null, max: 15000 },
+  { id: '15-30', label: '$15.000 – $30.000', min: 15000, max: 30000 },
+  { id: '30-50', label: '$30.000 – $50.000', min: 30000, max: 50000 },
+  { id: '50', label: 'Más de $50.000', min: 50000, max: null },
 ] as const
 
 export const DEFAULT_SEARCH = {

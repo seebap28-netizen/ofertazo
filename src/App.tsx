@@ -20,8 +20,8 @@ export default function App() {
           </Routes>
         </main>
         <footer className="mx-auto max-w-6xl px-4 pb-10 text-sm text-zinc-500">
-          <p>© {new Date().getFullYear()} Ofertazo · Ofertas deportivas en Chile</p>
-          <p className="mt-1">Envíos a todo el país · Compra protegida</p>
+          <p>© {new Date().getFullYear()} Ofertazo · Ofertas gym en Chile</p>
+          <p className="mt-1">Suplementos y equipo · Envíos a todo el país</p>
         </footer>
       </div>
     </BrowserRouter>

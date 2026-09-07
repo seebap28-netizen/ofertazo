@@ -42,7 +42,7 @@ export function Filters({ value, onChange, onSubmit }: Props) {
         <input
           value={value.q}
           onChange={(event) => onChange({ ...value, q: event.target.value, offset: 0 })}
-          placeholder="Busca zapatillas, Nike Air Max, running..."
+          placeholder="Busca creatina, proteína, mancuernas..."
           className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-5 py-4 outline-none ring-[#ffd000] focus:ring-2"
         />
         <button
