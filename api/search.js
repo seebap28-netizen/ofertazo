@@ -107,11 +107,18 @@ async function fetchLive(searchParams) {
 }
 
 export async function runSearch(searchParams) {
+  const token = await getAccessToken()
   try {
     return await fetchLive(searchParams)
   } catch (error) {
     console.error('Búsqueda Mercado Libre falló', error)
-    return filterSeed(searchParams)
+    if (!token) {
+      return {
+        ...filterSeed(searchParams),
+        reason: 'sin_token',
+      }
+    }
+    throw error
   }
 }
 

@@ -48,14 +48,21 @@ export async function exchangeCode(code, codeVerifier) {
   return response.json()
 }
 
+export function cleanSecret(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+}
+
 export async function getAccessToken() {
-  if (process.env.ML_ACCESS_TOKEN) return process.env.ML_ACCESS_TOKEN
+  const direct = cleanSecret(process.env.ML_ACCESS_TOKEN)
+  if (direct) return direct
 
   if (cached.token && Date.now() < cached.expiresAt) return cached.token
 
-  const refresh = process.env.ML_REFRESH_TOKEN
-  const clientId = process.env.ML_CLIENT_ID
-  const clientSecret = process.env.ML_CLIENT_SECRET
+  const refresh = cleanSecret(process.env.ML_REFRESH_TOKEN)
+  const clientId = cleanSecret(process.env.ML_CLIENT_ID)
+  const clientSecret = cleanSecret(process.env.ML_CLIENT_SECRET)
   if (!refresh || !clientId || !clientSecret) return null
 
   const body = new URLSearchParams({
