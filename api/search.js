@@ -127,15 +127,28 @@ function mapCatalogProduct(product, fallbackId) {
 }
 
 async function fetchCatalogProducts(token, productIds) {
-  const unique = [...new Set(productIds)].slice(0, 24)
+  const unique = [...new Set(productIds)].slice(0, 16)
   return Promise.all(
     unique.map(async (id) => {
-      try {
-        const product = await mlGet(`/products/${id}`, token)
-        return mapCatalogProduct(product, id)
-      } catch {
-        return mapCatalogProduct({ id, name: 'Oferta deportiva' }, id)
+      const [product, listing] = await Promise.all([
+        mlGet(`/products/${id}`, token).catch(() => ({ id, name: 'Oferta deportiva' })),
+        mlGet(`/products/${id}/items`, token).catch(() => ({ results: [] })),
+      ])
+      const offers = [...(listing.results || [])].sort(
+        (a, b) => Number(a.price || 0) - Number(b.price || 0),
+      )
+      const cheapest = offers.find((offer) => Number(offer.price) > 0)
+      const mapped = mapCatalogProduct(product, id)
+      if (cheapest) {
+        mapped.price = Number(cheapest.price)
+        mapped.original_price = cheapest.original_price ?? mapped.original_price
+        mapped.id = cheapest.item_id || mapped.id
+        if (cheapest.permalink) mapped.permalink = cheapest.permalink
+        mapped.shipping = {
+          free_shipping: Boolean(cheapest.shipping?.free_shipping || cheapest.free_shipping),
+        }
       }
+      return mapped
     }),
   )
 }

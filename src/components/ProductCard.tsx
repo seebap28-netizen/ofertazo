@@ -60,9 +60,7 @@ export function ProductCard({ product, onFavoriteChange }: Props) {
         ) : null}
         <h3 className="line-clamp-2 min-h-12 text-base font-medium leading-snug">{product.title}</h3>
         <div>
-          <p className="text-2xl font-bold">
-            {product.price ? formatClp(product.price) : 'Ver precio'}
-          </p>
+          <p className="text-2xl font-bold">{formatClp(product.price)}</p>
           {product.originalPrice ? (
             <p className="text-sm text-zinc-500 line-through">{formatClp(product.originalPrice)}</p>
           ) : null}
